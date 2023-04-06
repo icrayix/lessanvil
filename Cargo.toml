@@ -1,7 +1,13 @@
 [package]
 name = "lessanvil"
 version = "0.1.0"
+authors = ["icrayix"]
 edition = "2021"
+license = "MIT"
+description = "Small CLI for reducing a Minecraft: Java Edition's world size by removing unused chunks."
+repository = "https://github.com/icrayix/lessanvil"
+readme = "README.md"
+categories = ["command-line-utilities"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
