@@ -34,6 +34,9 @@ struct Args {
     /// The amount of threads spawned. Default is the same as the number of CPUs available
     #[arg(short, long)]
     thread_count: Option<usize>,
+    /// Skip confirmation prompt. Use this with caution!
+    #[arg(long, default_value = "false")]
+    confirm: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -56,14 +59,16 @@ fn main() -> anyhow::Result<()> {
         process::exit(1);
     }
 
-    anstream::eprintln!("This tool will remove all chunks in which players have been less than the given amount of time.");
-    anstream::eprintln!("{}: This tool will work on the given world folder. Therefore it's recommended to {} before continuing.", "Warning".black().on_red().bold(), "create a backup".black().on_yellow().bold());
-    if !Confirm::new()
-        .with_prompt("Do you want to continue?")
-        .interact()?
-    {
-        anstream::eprintln!("Aborting.");
-        process::exit(1);
+    if !args.confirm {
+        anstream::eprintln!("This tool will remove all chunks in which players have been less than the given amount of time.");
+        anstream::eprintln!("{}: This tool will work on the given world folder. Therefore it's recommended to {} before continuing.", "Warning".black().on_red().bold(), "create a backup".black().on_yellow().bold());
+        if !Confirm::new()
+            .with_prompt("Do you want to continue?")
+            .interact()?
+        {
+            anstream::eprintln!("Aborting.");
+            process::exit(1);
+        }
     }
 
     if let Some(threads) = args.thread_count {
