@@ -1,5 +1,4 @@
 use std::{
-    env,
     fs::{self, File},
     io::{self, Seek},
     path::{Path, PathBuf},
@@ -10,6 +9,7 @@ use std::{
 
 use anyhow::bail;
 use clap::Parser;
+use dialoguer::Confirm;
 use fastanvil::Region;
 use indicatif::{HumanBytes, HumanDuration, ParallelProgressIterator, ProgressStyle};
 use owo_colors::OwoColorize;
@@ -25,12 +25,13 @@ const REGION_SUBFOLDERS: [&str; 3] = ["region", "DIM-1/region", "DIM1/region"];
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    #[arg(short, long, default_value = ".")]
-    world_folder: String,
+    #[arg(short, long)]
+    world_folder: PathBuf,
     /// The maximum amount of time players can have spent spent in a chunk for it to get
-    /// remmoved in seconds. See <https://minecraft.fandom.com/wiki/Chunk_format#NBT_structure>
+    /// remmoved in seconds. See https://minecraft.fandom.com/wiki/Chunk_format#NBT_structure
     #[arg(short, long, default_value = "0")]
     max_inhabited_time: usize,
+    /// The amount of threads spawned. Default is the same as the number of CPUs available
     #[arg(short, long)]
     thread_count: Option<usize>,
 }
@@ -45,13 +46,24 @@ fn main() -> anyhow::Result<()> {
     env_logger::init();
 
     let args = Args::parse();
-    let world_folder = if args.world_folder == "." {
-        env::current_dir().unwrap()
-    } else {
-        Path::new(&args.world_folder).to_path_buf()
-    };
-    if !world_folder.exists() {
+    if !args.world_folder.exists() {
         bail!("Specified folder doesnt exist.");
+    }
+
+    // Check if valid world
+    if !args.world_folder.join("level.dat").exists() || !args.world_folder.join("region").exists() {
+        log::error!("Invalid world!");
+        process::exit(1);
+    }
+
+    anstream::eprintln!("This tool will remove all chunks in which players have been less than the given amount of time.");
+    anstream::eprintln!("{}: This tool will work on the given world folder. Therefore it's recommended to {} before continuing.", "Warning".black().on_red().bold(), "create a backup".black().on_yellow().bold());
+    if !Confirm::new()
+        .with_prompt("Do you want to continue?")
+        .interact()?
+    {
+        anstream::eprintln!("Aborting.");
+        process::exit(1);
     }
 
     if let Some(threads) = args.thread_count {
@@ -60,10 +72,10 @@ fn main() -> anyhow::Result<()> {
             .build_global()?;
     }
 
-    let size_before = dir_size(world_folder.as_path())?;
+    let size_before = dir_size(args.world_folder.as_path())?;
     let start_time = time::Instant::now();
 
-    let files = match collect_region_files(Path::new(&world_folder)) {
+    let files = match collect_region_files(Path::new(&args.world_folder)) {
         Ok(files) => files,
         Err(err) => {
             log::error!("Failed to collect region files: {}", err);
@@ -83,7 +95,6 @@ fn main() -> anyhow::Result<()> {
             .unwrap()
             .progress_chars("#> "),
         )
-        .with_prefix("")
         .for_each(|path| match process_region_file(path.as_path(), args.max_inhabited_time * 20) {
             Ok(deleted_chunks) => { total_deleted_chunks.fetch_add(deleted_chunks as u64, std::sync::atomic::Ordering::Relaxed); },
             Err(err) => log::error!(
@@ -93,7 +104,7 @@ fn main() -> anyhow::Result<()> {
             ),
         });
 
-    let freed_space = size_before - dir_size(world_folder.as_path())?;
+    let freed_space = size_before - dir_size(args.world_folder.as_path())?;
     let time_taken = time::Instant::now() - start_time;
 
     anstream::println!(
