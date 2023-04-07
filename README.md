@@ -1,3 +1,5 @@
+[![Rust](https://github.com/icrayix/lessanvil/actions/workflows/rust.yml/badge.svg)](https://github.com/icrayix/lessanvil/actions/workflows/rust.yml)
+
 # lessanvil
 Small CLI application to reduce a Minecraft: Java Edition's world size by deleting unused chunks.
 
