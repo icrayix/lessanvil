@@ -13,7 +13,10 @@ use clap::Parser;
 use fastanvil::Region;
 use indicatif::{HumanBytes, HumanDuration, ParallelProgressIterator, ProgressStyle};
 use owo_colors::OwoColorize;
-use rayon::prelude::{IntoParallelIterator, ParallelIterator};
+use rayon::{
+    prelude::{IntoParallelIterator, ParallelIterator},
+    ThreadPoolBuilder,
+};
 use serde::{Deserialize, Serialize};
 
 /// The subfolders in the world folder in which the region files are contained
@@ -28,6 +31,8 @@ struct Args {
     /// remmoved in seconds. See <https://minecraft.fandom.com/wiki/Chunk_format#NBT_structure>
     #[arg(short, long, default_value = "0")]
     max_inhabited_time: usize,
+    #[arg(short, long)]
+    thread_count: Option<usize>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -48,6 +53,13 @@ fn main() -> anyhow::Result<()> {
     if !world_folder.exists() {
         bail!("Specified folder doesnt exist.");
     }
+
+    if let Some(threads) = args.thread_count {
+        ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build_global()?;
+    }
+
     let size_before = dir_size(world_folder.as_path())?;
     let start_time = time::Instant::now();
 
