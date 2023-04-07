@@ -37,12 +37,24 @@ struct Args {
     /// Skip confirmation prompt. Use this with caution!
     #[arg(long, default_value = "false")]
     confirm: bool,
+    /// Whether the final report should be in json
+    #[arg(long, default_value = "false")]
+    json: bool,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct Chunk {
     inhabited_time: usize,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Report {
+    total_time_in_seconds: u64,
+    total_processed_files: usize,
+    total_deleted_chunks: u64,
+    total_freed_space_in_kib: u64,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -96,8 +108,7 @@ fn main() -> anyhow::Result<()> {
         .progress_with_style(
             ProgressStyle::with_template(
                 "Processing files: {pos}/{len} files | {per_sec} [{wide_bar:0.yellow}] {percent}% | {elapsed} ",
-            )
-            .unwrap()
+            )?
             .progress_chars("#> "),
         )
         .for_each(|path| match process_region_file(path.as_path(), args.max_inhabited_time * 20) {
@@ -112,13 +123,24 @@ fn main() -> anyhow::Result<()> {
     let freed_space = size_before - dir_size(args.world_folder.as_path())?;
     let time_taken = time::Instant::now() - start_time;
 
-    anstream::println!(
-        "Successfully processed {} files in {} and freed up {} by deleting {} chunks.",
-        total_files.yellow(),
-        HumanDuration(time_taken).yellow(),
-        HumanBytes(freed_space).yellow(),
-        total_deleted_chunks.into_inner().yellow()
-    );
+    let report = if args.json {
+        serde_json::to_string(&Report {
+            total_time_in_seconds: time_taken.as_secs(),
+            total_processed_files: total_files,
+            total_deleted_chunks: total_deleted_chunks.into_inner(),
+            total_freed_space_in_kib: freed_space / 1024,
+        })
+        .unwrap()
+    } else {
+        format!(
+            "Successfully processed {} files in {} and freed up {} by deleting {} chunks.",
+            total_files.yellow(),
+            HumanDuration(time_taken).yellow(),
+            HumanBytes(freed_space).yellow(),
+            total_deleted_chunks.into_inner().yellow()
+        )
+    };
+    anstream::println!("{report}");
 
     Ok(())
 }
