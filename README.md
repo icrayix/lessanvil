@@ -18,3 +18,7 @@ cargo install lessanvil
 
 ## Get the precompiled binary
 Alternatively you can download a precompiled binary from the releases page.
+
+## Use Docker
+You can use `lessanvil` without installation using Docker.
+For more information look [here](https://hub.docker.com/r/icrayix/lessanvil).
