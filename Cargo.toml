@@ -15,9 +15,9 @@ categories = ["command-line-utilities"]
 anstream = "0.2.6"
 anyhow = "1.0.70"
 clap = { version = "4.1.1", features = ["derive"] }
-dialoguer = { version = "0.10.3", features = [] }
+dialoguer = { version = "0.10.3", default-features = false }
 env_logger = "0.10.0"
-fastanvil = "0.27.0"
+fastanvil = { version = "0.28.0", default-features = false }
 fastnbt = "2.3.2"
 indicatif = { version = "0.17.3", features = ["rayon"] }
 log = "0.4.17"
