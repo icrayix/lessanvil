@@ -11,7 +11,7 @@ use anyhow::bail;
 use clap::Parser;
 use dialoguer::Confirm;
 use fastanvil::Region;
-use indicatif::{HumanBytes, HumanDuration, ParallelProgressIterator, ProgressStyle};
+use indicatif::{HumanBytes, HumanDuration, ParallelProgressIterator, ProgressBar, ProgressStyle};
 use owo_colors::OwoColorize;
 use rayon::{
     prelude::{IntoParallelIterator, ParallelIterator},
@@ -103,22 +103,29 @@ fn main() -> anyhow::Result<()> {
     let total_files = files.len();
     let total_deleted_chunks = AtomicU64::new(0);
 
+    let progress_bar = ProgressBar::new(files.len() as u64).with_style(
+        ProgressStyle::with_template(
+            "Processing files: {pos}/{len} files | {per_sec} [{wide_bar:0.yellow}] {percent}% | {elapsed} ",
+        )?
+        .progress_chars("#> ")
+    );
+
     files
         .into_par_iter()
-        .progress_with_style(
-            ProgressStyle::with_template(
-                "Processing files: {pos}/{len} files | {per_sec} [{wide_bar:0.yellow}] {percent}% | {elapsed} ",
-            )?
-            .progress_chars("#> "),
-        )
-        .for_each(|path| match process_region_file(path.as_path(), args.max_inhabited_time * 20) {
-            Ok(deleted_chunks) => { total_deleted_chunks.fetch_add(deleted_chunks as u64, std::sync::atomic::Ordering::Relaxed); },
-            Err(err) => log::error!(
-                "Failed to process region file ({}): {}",
-                path.display(),
-                err
-            ),
-        });
+        .progress_with(progress_bar)
+        .for_each(
+            |path| match process_region_file(path.as_path(), args.max_inhabited_time * 20) {
+                Ok(deleted_chunks) => {
+                    total_deleted_chunks
+                        .fetch_add(deleted_chunks as u64, std::sync::atomic::Ordering::Relaxed);
+                }
+                Err(err) => log::error!(
+                    "Failed to process region file ({}): {}",
+                    path.display(),
+                    err
+                ),
+            },
+        );
 
     let freed_space = size_before - dir_size(args.world_folder.as_path())?;
     let time_taken = time::Instant::now() - start_time;
