@@ -69,7 +69,9 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Check if valid world
-    if !args.world_folder.join("level.dat").exists() || !args.world_folder.join("region").exists() && !args.force {
+    if !args.force && !args.world_folder.join("level.dat").exists()
+        || !args.world_folder.join("region").exists()
+    {
         log::error!("Invalid world!");
         process::exit(1);
     }
