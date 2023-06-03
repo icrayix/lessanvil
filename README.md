@@ -3,7 +3,7 @@
 # lessanvil
 Small CLI application to reduce a Minecraft: Java Edition's world size by deleting unused chunks.
 
-This works by looking at the InhabitedTime NBT-tag (see [here](https://minecraft.fandom.com/wiki/Chunk_format) for more information) of each chunk and deleting it in case it's lower than specified value.
+This works by looking at the InhabitedTime NBT-tag (see [here](https://minecraft.fandom.com/wiki/Chunk_format) for more information) of each chunk and deleting the chunk in case it's lower than user-specified value.
 
 # Usage
 See `lessanvil --help`
