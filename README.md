@@ -10,14 +10,14 @@ See `lessanvil --help`
 
 # Installation
 
+## Get the precompiled binary
+Alternatively you can download a precompiled binary from the [releases page](https://github.com/icrayix/lessanvil/releases/latest).
+
 ## Using Cargo
 If you have [cargo](https://github.com/rust-lang/cargo) installed you can use it to compile and install lessanvil.
 ```
 cargo install lessanvil
 ```
-
-## Get the precompiled binary
-Alternatively you can download a precompiled binary from the releases page.
 
 ## Use Docker
 You can use `lessanvil` without installation using Docker.
