@@ -5,17 +5,18 @@ use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{self, Seek};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicU64};
+use std::sync::atomic::AtomicBool;
 use std::sync::mpsc;
 use std::{fs, thread, time};
 
 /// The subfolders in the world folder in which the region files are contained
 const REGION_SUBFOLDERS: [&str; 3] = ["region", "DIM-1/region", "DIM1/region"];
 
+#[derive(Default)]
 pub struct Config {
     pub world_folder: PathBuf,
     pub max_inhabited_time: usize,
-    pub thread_count: Option<usize>,
+    pub thread_count: usize,
 }
 
 #[derive(Serialize)]
@@ -46,11 +47,9 @@ pub fn execute(config: Config) -> Result<mpsc::Receiver<ProcessingUpdate>, Error
         return Err(Error::WorldFolderNotFound);
     }
 
-    if let Some(threads) = config.thread_count {
-        ThreadPoolBuilder::new()
-            .num_threads(threads)
-            .build_global()?;
-    }
+    ThreadPoolBuilder::new()
+        .num_threads(config.thread_count)
+        .build_global()?;
 
     let (tx, rx) = mpsc::channel();
 
@@ -92,11 +91,9 @@ pub fn execute(config: Config) -> Result<mpsc::Receiver<ProcessingUpdate>, Error
 }
 
 fn collect_region_files(base_path: &Path) -> io::Result<Vec<PathBuf>> {
-    log::debug!("Collecting files.");
     let mut files = vec![];
     for sub_folder in REGION_SUBFOLDERS {
         let path = base_path.join(Path::new(sub_folder));
-        log::debug!("Checking {:?} for region files.", path);
         if !path.try_exists().map_or(false, |b| b) {
             continue;
         }
@@ -113,7 +110,6 @@ fn collect_region_files(base_path: &Path) -> io::Result<Vec<PathBuf>> {
             .collect();
         files.append(&mut contents);
     }
-    log::debug!("Collected {} files.", files.len());
     Ok(files)
 }
 
