@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{self, Seek};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::mpsc;
 use std::{fs, thread, time};
 
@@ -20,10 +20,12 @@ pub struct Config {
 }
 
 #[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct Report {
     pub total_time_in_seconds: u64,
     pub total_freed_space_in_kib: u64,
+    pub total_regions: u64,
+    pub total_chunks: u64,
+    pub total_deleted_chunks: u64,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -53,10 +55,13 @@ pub fn execute(config: Config) -> Result<mpsc::Receiver<ProcessingUpdate>, Error
 
     let (tx, rx) = mpsc::channel();
 
+    let files = collect_region_files(Path::new(&config.world_folder))?;
+
     let size_before = dir_size(config.world_folder.as_path())?;
     let start_time = time::Instant::now();
-
-    let files = collect_region_files(Path::new(&config.world_folder))?;
+    let total_regions = files.len() as u64;
+    let total_chunks = AtomicU64::new(0);
+    let total_deleted_chunks = AtomicU64::new(0);
 
     let running = AtomicBool::new(true);
 
@@ -70,10 +75,22 @@ pub fn execute(config: Config) -> Result<mpsc::Receiver<ProcessingUpdate>, Error
                 return;
             }
 
-            if let Err(_) = t.send(ProcessingUpdate::ProcessedRegion(process_region_file(
-                path.as_path(),
-                config.max_inhabited_time * 20,
-            ))) {
+            let processed_region =
+                process_region_file(path.as_path(), config.max_inhabited_time * 20);
+
+            if let Ok(ProcessedRegion {
+                x: _,
+                y: _,
+                total_chunks: chunks,
+                deleted_chunks,
+            }) = processed_region
+            {
+                total_chunks.fetch_add(chunks as u64, std::sync::atomic::Ordering::Relaxed);
+                total_deleted_chunks
+                    .fetch_add(deleted_chunks as u64, std::sync::atomic::Ordering::Relaxed);
+            }
+
+            if let Err(_) = t.send(ProcessingUpdate::ProcessedRegion(processed_region)) {
                 running.store(false, std::sync::atomic::Ordering::Relaxed)
             }
         });
@@ -84,6 +101,9 @@ pub fn execute(config: Config) -> Result<mpsc::Receiver<ProcessingUpdate>, Error
         tx.send(ProcessingUpdate::Finished(Report {
             total_time_in_seconds: time_taken.as_secs(),
             total_freed_space_in_kib: freed_space,
+            total_regions,
+            total_chunks: total_chunks.into_inner(),
+            total_deleted_chunks: total_deleted_chunks.into_inner(),
         }))
     });
 
@@ -130,10 +150,10 @@ struct Chunk {
 }
 
 pub struct ProcessedRegion {
-    x: usize,
-    y: usize,
-    total_chunks: u16,
-    deleted_chunks: u16,
+    pub x: usize,
+    pub y: usize,
+    pub total_chunks: u16,
+    pub deleted_chunks: u16,
 }
 
 fn process_region_file(
