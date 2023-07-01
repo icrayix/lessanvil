@@ -10,8 +10,8 @@ lessanvil-cli --help
 
 ### Precompiled binary
 
-A precompiled binary is available on the (releases page)[https://github.com/icrayix/lessanvil/releases/latest].
+A precompiled binary is available on the [releases page](https://github.com/icrayix/lessanvil/releases/latest).
 
 ### Docker
 
-Lessanvil can be used as well without installation by using the provided (docker image)[https://hub.docker.com/r/icrayix/lessanvil].
+Lessanvil can be used as well without installation by using the provided [docker image](https://hub.docker.com/r/icrayix/lessanvil).
