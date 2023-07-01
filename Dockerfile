@@ -1,11 +1,10 @@
-FROM rust:1.68-alpine as builder
+FROM rust:1.70-alpine as builder
 WORKDIR /usr/src/lessanvil
 RUN apk add musl-dev
 COPY . .
-ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
-RUN cargo install --path .
+RUN cargo install --path cli
 
 FROM alpine:latest
-COPY --from=builder /usr/local/cargo/bin/lessanvil /usr/local/bin/lessanvil
-ENTRYPOINT [ "/usr/local/bin/lessanvil" ]
+COPY --from=builder /usr/local/cargo/bin/lessanvil-cli /usr/local/bin/lessanvil-cli
+ENTRYPOINT [ "/usr/local/bin/lessanvil-cli" ]
 CMD [ "-w", "/var/world", "--confirm" ]
