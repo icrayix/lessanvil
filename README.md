@@ -1,6 +1,6 @@
 # lessanvil
 
-## ! IMPORTANT ! For the CLI see [here](cli/README.md)
+## For the CLI see [here](cli/README.md)
 
 ## About
 
