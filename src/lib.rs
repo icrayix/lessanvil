@@ -5,8 +5,9 @@ use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{self, Seek};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicU64};
+use std::sync::atomic::AtomicU64;
 use std::sync::mpsc;
+use std::time::Duration;
 use std::{fs, thread, time};
 
 /// The subfolders in the world folder in which the region files are contained
@@ -21,8 +22,8 @@ pub struct Config {
 
 #[derive(Serialize)]
 pub struct Report {
-    pub total_time_in_seconds: u64,
-    pub total_freed_space_in_kib: u64,
+    pub time_taken: Duration,
+    pub total_freed_space: u64,
     pub total_regions: u64,
     pub total_chunks: u64,
     pub total_deleted_chunks: u64,
@@ -63,48 +64,49 @@ pub fn execute(config: Config) -> Result<mpsc::Receiver<ProcessingUpdate>, Error
     let total_chunks = AtomicU64::new(0);
     let total_deleted_chunks = AtomicU64::new(0);
 
-    let running = AtomicBool::new(true);
-
     thread::spawn(move || {
         let _ = tx.send(ProcessingUpdate::Starting {
             total_files: files.len() as u64,
         });
 
-        files.into_par_iter().for_each_with(tx.clone(), |t, path| {
-            if !running.load(std::sync::atomic::Ordering::Relaxed) {
-                return;
-            }
+        let result = files
+            .into_par_iter()
+            .try_for_each_with(tx.clone(), |t, path| {
+                let processed_region =
+                    process_region_file(path.as_path(), config.max_inhabited_time * 20);
 
-            let processed_region =
-                process_region_file(path.as_path(), config.max_inhabited_time * 20);
+                if let Ok(ProcessedRegion {
+                    x: _,
+                    y: _,
+                    total_chunks: chunks,
+                    deleted_chunks,
+                }) = processed_region
+                {
+                    total_chunks.fetch_add(chunks as u64, std::sync::atomic::Ordering::Relaxed);
+                    total_deleted_chunks
+                        .fetch_add(deleted_chunks as u64, std::sync::atomic::Ordering::Relaxed);
+                }
 
-            if let Ok(ProcessedRegion {
-                x: _,
-                y: _,
-                total_chunks: chunks,
-                deleted_chunks,
-            }) = processed_region
-            {
-                total_chunks.fetch_add(chunks as u64, std::sync::atomic::Ordering::Relaxed);
-                total_deleted_chunks
-                    .fetch_add(deleted_chunks as u64, std::sync::atomic::Ordering::Relaxed);
-            }
+                if t.send(ProcessingUpdate::ProcessedRegion(processed_region))
+                    .is_err()
+                {
+                    Err(())
+                } else {
+                    Ok(())
+                }
+            });
+        if result.is_ok() {
+            let freed_space = size_before - dir_size(config.world_folder.as_path()).unwrap_or(0);
+            let time_taken = time::Instant::now() - start_time;
 
-            if let Err(_) = t.send(ProcessingUpdate::ProcessedRegion(processed_region)) {
-                running.store(false, std::sync::atomic::Ordering::Relaxed)
-            }
-        });
-
-        let freed_space = size_before - dir_size(config.world_folder.as_path()).unwrap_or(0);
-        let time_taken = time::Instant::now() - start_time;
-
-        tx.send(ProcessingUpdate::Finished(Report {
-            total_time_in_seconds: time_taken.as_secs(),
-            total_freed_space_in_kib: freed_space,
-            total_regions,
-            total_chunks: total_chunks.into_inner(),
-            total_deleted_chunks: total_deleted_chunks.into_inner(),
-        }))
+            let _ = tx.send(ProcessingUpdate::Finished(Report {
+                time_taken,
+                total_freed_space: freed_space,
+                total_regions,
+                total_chunks: total_chunks.into_inner(),
+                total_deleted_chunks: total_deleted_chunks.into_inner(),
+            }));
+        }
     });
 
     Ok(rx)
@@ -166,7 +168,7 @@ fn process_region_file(
     let (y, x) = match region_file_path
         .file_stem()
         .and_then(|os| os.to_str())
-        .map(|s| s.split(".").skip(1).collect::<Vec<_>>())
+        .map(|s| s.split('.').skip(1).collect::<Vec<_>>())
     {
         Some(mut vec) => (
             vec.pop().unwrap_or("0").parse::<usize>().unwrap_or(0),
