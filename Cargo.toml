@@ -24,3 +24,5 @@ readme = "README.md"
 
 [profile.release]
 strip = "debuginfo"
+
+

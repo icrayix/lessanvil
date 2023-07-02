@@ -35,6 +35,7 @@ struct Args {
 }
 
 #[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 enum ProcessingUpdate {
     Processing { progress: f64 },
     Finished { report: CliReport },
