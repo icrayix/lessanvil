@@ -1,3 +1,5 @@
+//! See [`execute`] for the entrypoint of this crate.
+
 use fastanvil::Region;
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use rayon::{ThreadPoolBuildError, ThreadPoolBuilder};
@@ -13,38 +15,60 @@ use std::{fs, thread, time};
 /// The subfolders in the world folder in which the region files are contained
 const REGION_SUBFOLDERS: [&str; 3] = ["region", "DIM-1/region", "DIM1/region"];
 
+/// The config to be passed to lessanvil.
 #[derive(Default)]
 pub struct Config {
+    /// The folder containing the world.
     pub world_folder: PathBuf,
+    /// The maximum [Inhabited Time](https://minecraft.fandom.com/wiki/Chunk_format) value for a chunk to get deleted.
     pub max_inhabited_time: usize,
+    /// The amount of threads lessanvil should use.
     pub thread_count: usize,
 }
 
+/// A Report that will be handed out ofter the execution finished.
 #[derive(Serialize)]
 pub struct Report {
+    /// The total time the execution took.
     pub time_taken: Duration,
+    /// The total disk space freed in bytes.
     pub total_freed_space: u64,
+    /// The total amount of region(-file-)s processed.
     pub total_regions: u64,
+    /// The total amount of chunks processed.
     pub total_chunks: u64,
+    /// The total amount of deleted chunks.
     pub total_deleted_chunks: u64,
 }
 
+/// The error type for errors that occured before the actual processing started.
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+    /// The world folder could not be accessed. This can be caused by e.g. the world folder not existing or the user not having sufficient privileges.
     #[error("The specified world folder could not be found")]
     WorldFolderNotFound,
+    /// An arbitrary IO error.
     #[error("Unknown IO error")]
     IOError(#[from] io::Error),
+    /// An error caused when invoking the [`ThreadPoolBuilder`]
     #[error("Failed to build Rayon threadpool")]
     RayonError(#[from] ThreadPoolBuildError),
 }
 
+/// An update during lessanvil's execution.
 pub enum ProcessingUpdate {
+    /// Only sent once after the processing started.
     Starting { total_files: u64 },
+    /// Sent after a region has been processed.
+    /// Contains the [`Result`] of the processed region.
     ProcessedRegion(Result<ProcessedRegion, RegionProcessingError>),
+    /// Only sent once after the entire execution finished. This is the last message sent through the Channel.
     Finished(Report),
 }
 
+/// The entrypoint to this crate.
+///
+/// The [`Result`] contains a [`Receiver`](`mpsc::Receiver`) through which [`ProcessingUpdate`]s will be sent. Dropping this [`Receiver`](`mpsc::Receiver`) will stop the processing as soon as possible.
 pub fn execute(config: Config) -> Result<mpsc::Receiver<ProcessingUpdate>, Error> {
     if !config.world_folder.try_exists().map_or(false, |r| r) {
         return Err(Error::WorldFolderNotFound);
@@ -135,12 +159,16 @@ fn collect_region_files(base_path: &Path) -> io::Result<Vec<PathBuf>> {
     Ok(files)
 }
 
+/// The error type for processed regions.
 #[derive(thiserror::Error, Debug)]
 pub enum RegionProcessingError {
-    #[error("Unknown IO error")]
+    /// An arbitrary I/0 Error
+    #[error("Unknown I/O error")]
     IOError(#[from] io::Error),
+    /// An arbitrary error for [Minecraft Anvil](https://minecraft.fandom.com/wiki/Anvil_file_format) operations.
     #[error("Anvil error")]
     AnvilError(#[from] fastanvil::Error),
+    /// An arbitrary error for [Minecraft NBT](https://minecraft.fandom.com/wiki/NBT_format) operations.
     #[error("NBT error")]
     NBTError(#[from] fastnbt::error::Error),
 }
@@ -151,10 +179,15 @@ struct Chunk {
     inhabited_time: usize,
 }
 
+/// A processed region.
 pub struct ProcessedRegion {
+    /// The x-coordinate.
     pub x: usize,
+    /// The y-coordinate.
     pub y: usize,
+    /// The total chunks processed in this region.
     pub total_chunks: u16,
+    /// The total chunks deleted in this region.
     pub deleted_chunks: u16,
 }
 
