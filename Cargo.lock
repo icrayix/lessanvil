@@ -486,7 +486,7 @@ dependencies = [
 
 [[package]]
 name = "lessanvil-cli"
-version = "0.1.0"
+version = "1.3.0"
 dependencies = [
  "anstream 0.2.6",
  "clap",
