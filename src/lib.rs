@@ -58,7 +58,10 @@ pub enum Error {
 /// An update during lessanvil's execution.
 pub enum ProcessingUpdate {
     /// Only sent once after the processing started.
-    Starting { total_files: u64 },
+    Starting {
+        /// Total amount of files to be processed.
+        total_files: u64,
+    },
     /// Sent after a region has been processed.
     /// Contains the [`Result`] of the processed region.
     ProcessedRegion(Result<ProcessedRegion, RegionProcessingError>),
