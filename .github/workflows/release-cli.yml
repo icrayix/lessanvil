@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  publish-cli:
+    name: Publishing CLI for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+        rust: [stable]
+        include:
+          - os: macos-latest
+            artifact_prefix: macos
+            target: x86_64-apple-darwin
+            binary_postfix: ""
+          - os: ubuntu-latest
+            artifact_prefix: linux
+            target: x86_64-unknown-linux-gnu
+            binary_postfix: ""
+          - os: windows-latest
+            artifact_prefix: windows
+            target: x86_64-pc-windows-msvc
+            binary_postfix: ".exe"
+
+    steps:
+      - name: Installing Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          override: true
+      - name: Checking out sources
+        uses: actions/checkout@v1
+      - name: Running cargo build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          toolchain: ${{ matrix.rust }}
+          args: --release --target ${{ matrix.target }}
+
+      - name: Packaging final binary
+        shell: bash
+        run: |
+          cd target/${{ matrix.target }}/release
+
+          BINARY_NAME=lessanvil-cli${{ matrix.binary_postfix }}
+          strip $BINARY_NAME
+
+          RELEASE_NAME=lessanvil-cli-${{ matrix.artifact_prefix }}${{ matrix.binary_postfix }}
+
+          mv $BINARY_NAME $RELEASE_NAME
+
+          if [[ ${{ runner.os }} == 'Windows' ]]; then
+            certutil -hashfile $RELEASE_NAME sha256 | grep -E [A-Fa-f0-9]{64} > $RELEASE_NAME.sha256
+          else
+            shasum -a 256 $RELEASE_NAME > $RELEASE_NAME.sha256
+          fi
+      - name: Publishing pre-built binaries
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            target/${{ matrix.target }}/release/lessanvil-cli-${{ matrix.artifact_prefix }}${{ matrix.binary_postfix }}
+            target/${{ matrix.target }}/release/lessanvil-cli-${{ matrix.artifact_prefix }}${{ matrix.binary_postfix }}.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    publish-docker:
+    name: build and publish docker image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+      
+      - name: Log in to Docker Hub
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+      
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            icrayix/lessanvil
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        with:
+          context: .
+          file: cli/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
