@@ -21,3 +21,6 @@ members = ["cli"]
 [workspace.package]
 repository = "https://github.com/icrayix/lessanvil"
 readme = "README.md"
+
+[profile.release]
+strip = "debuginfo"
