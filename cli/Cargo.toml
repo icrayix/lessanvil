@@ -11,8 +11,8 @@ lessanvil = { path = ".." }
 anstream = "0.2.6" 
 clap = { version = "4.1.1", features = ["derive"] }
 ctrlc = "3.4.0" 
-dialoguer = { version = "0.10.3", default-features = false}
-env_logger = "0.10.0" 
+dialoguer = { version = "0.10.3", default-features = false }
+env_logger = { version = "0.10.0", default-features = false, features = ["auto-color", "humantime"] }
 indicatif = "0.17.3" 
 log = "0.4.17" 
 owo-colors = "3.5.0" 
