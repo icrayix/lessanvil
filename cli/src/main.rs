@@ -57,8 +57,9 @@ fn main() {
     let args: Args = argh::from_env();
 
     // Check if valid world
-    if !args.force && ( !args.world_folder.join("level.dat").exists()
-        || !args.world_folder.join("region").exists() )
+    if !args.force
+        && (!args.world_folder.join("level.dat").exists()
+            || !args.world_folder.join("region").exists())
     {
         log::error!("Invalid world folder!");
         process::exit(1);
