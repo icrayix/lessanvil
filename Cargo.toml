@@ -21,6 +21,8 @@ members = ["cli"]
 [workspace.package]
 repository = "https://github.com/icrayix/lessanvil"
 readme = "README.md"
+edition = "2021"
+license = "MIT"
 
 [profile.release]
 strip = "debuginfo"
