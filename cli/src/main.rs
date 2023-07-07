@@ -5,32 +5,32 @@ use std::{
     time::Duration,
 };
 
-use clap::Parser;
 use dialoguer::Confirm;
 use indicatif::{HumanBytes, HumanDuration, ProgressBar, ProgressStyle};
 use lessanvil::Config;
 use owo_colors::OwoColorize;
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+/// CLI for reducing a Minecraft: Java Edition's world size by removing unused chunks.
+#[derive(argh::FromArgs, Debug)]
 struct Args {
-    #[arg(short, long)]
+    /// the world folder
+    #[argh(option, short = 'w')]
     world_folder: PathBuf,
-    /// The maximum amount of time players can have spent spent in a chunk for it to get
+    /// the maximum amount of time players can have spent spent in a chunk for it to get
     /// remmoved in seconds. See https://minecraft.fandom.com/wiki/Chunk_format#NBT_structure
-    #[arg(short, long, default_value = "0")]
+    #[argh(option, short = 'm', default = "0")]
     max_inhabited_time: usize,
-    /// The amount of threads spawned. Default is the same as the number of CPUs available
-    #[arg(short, long)]
+    /// the amount of threads spawned. Default is the same as the number of CPUs available
+    #[argh(option, short = 't')]
     thread_count: Option<usize>,
-    /// Skip confirmation prompt. Use this with caution!
-    #[arg(long, default_value = "false")]
+    /// skip confirmation prompt. Use this with caution!
+    #[argh(switch)]
     confirm: bool,
-    /// Skip all checks for the world being valid. Use this with caution!
-    #[arg(long, default_value = "false")]
+    /// skip all checks for the world being valid. Use this with caution!
+    #[argh(switch)]
     force: bool,
-    /// Whether the final report should be in json
-    #[arg(long, default_value = "false")]
+    /// whether the final report should be in json
+    #[argh(switch)]
     json: bool,
 }
 
@@ -54,11 +54,12 @@ pub struct CliReport {
 fn main() {
     env_logger::init();
 
-    let args = Args::parse();
+    let args: Args = argh::from_env();
 
     // Check if valid world
-    if !args.force && !args.world_folder.join("level.dat").exists()
-        || !args.world_folder.join("region").exists()
+    if !args.force
+        && (!args.world_folder.join("level.dat").exists()
+            || !args.world_folder.join("region").exists())
     {
         log::error!("Invalid world folder!");
         process::exit(1);
