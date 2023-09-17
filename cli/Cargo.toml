@@ -8,14 +8,14 @@ readme.workspace = true
 
 [dependencies]
 lessanvil = { path = ".." }
-anstream = "0.2.6" 
-ctrlc = "3.4.0" 
-dialoguer = { version = "0.10.3", default-features = false }
+anstream = "0.5.0" 
+ctrlc = "3.4.1" 
+dialoguer = { version = "0.10.4", default-features = false }
 env_logger = { version = "0.10.0", default-features = false, features = ["auto-color", "humantime"] }
-indicatif = "0.17.3" 
-log = "0.4.17" 
-owo-colors = "3.5.0" 
-serde_json = "1.0.95" 
-num_cpus = "1.15.0" 
-serde = "1.0.164"
-argh = "0.1.10"
+indicatif = "0.17.6" 
+log = "0.4.20" 
+owo-colors = "3.4.0" 
+serde_json = "1.0.107" 
+num_cpus = "1.16.0" 
+serde = "1.0.188"
+argh = "0.1.12"

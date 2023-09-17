@@ -221,7 +221,9 @@ fn process_region_file(
 
     for x in 0..32 {
         for y in 0..32 {
-            let Ok(Some(chunk)) = region.read_chunk(x, y) else { continue; };
+            let Ok(Some(chunk)) = region.read_chunk(x, y) else {
+                continue;
+            };
             let chunk: Chunk = fastnbt::from_bytes(&chunk)?;
             total_chunks += 1;
             if chunk.inhabited_time <= (man_inhabited_time / 20) {

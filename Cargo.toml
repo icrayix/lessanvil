@@ -9,11 +9,11 @@ repository = "https://github.com/icrayix/lessanvil"
 readme = "README.md"
 
 [dependencies]
-thiserror = "1.0.40"
-serde = "1.0.159"
+thiserror = "1.0.48"
+serde = "1.0.188"
 rayon = "1.7.0"
-fastanvil = { version = "0.28.0", default-features = false }
-fastnbt = "2.3.2"
+fastanvil = { version = "0.29.0", default-features = false }
+fastnbt = "2.4.4"
 
 [workspace]
 members = ["cli"]
