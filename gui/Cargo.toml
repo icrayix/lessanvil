@@ -1,0 +1,17 @@
+[package]
+name = "lessanvil-gui"
+authors = ["neuon", "icrayix"]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "GUI wrapper for lessanvil, a CLI tool to reduce the size of minecraft worlds, using GTK-rs."
+repository = "https://github.com/NeuonOG/lessanvil-gui"
+
+
+[dependencies]
+# gtk = { version = "0.6.6", package = "gtk4", features = ["v4_8"] }
+eframe = "0.22.0"
+rfd = "0.11.4"
+lessanvil = { git = "https://github.com/icrayix/lessanvil.git", branch = "refactor", package = "lessanvil", version = "1.0.0" }
+num_cpus = "1.15.0" 
+fs_extra = "1.3.0"
